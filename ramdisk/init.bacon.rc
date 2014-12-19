@@ -15,6 +15,7 @@
 #
 
 import /init.qcom-common.rc
+import /init.performance_profiles.rc
 
 on fs
     mount_all ./fstab.bacon
@@ -48,6 +49,11 @@ on post-fs-data
     # Torch
     chown system camera /sys/class/leds/torch-light/brightness
     chmod 0660 /sys/class/leds/torch-light/brightness
+    
+    # RGB Kcal
+    chown system system /sys/devices/platform/kcal_ctrl.0/kcal
+    chmod 0660 /sys/devices/platform/kcal_ctrl.0/kcal
+    
 
 # virtual sdcard daemon running as media_rw (1023)
 service sdcard /system/bin/sdcard -u 1023 -g 1023 -l /data/media /mnt/shell/emulated

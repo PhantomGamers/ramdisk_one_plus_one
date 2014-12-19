@@ -34,11 +34,9 @@ on early-boot
 
 on boot
     # bring CPUs online
-    write /sys/module/msm_thermal/core_control/enabled 0
     write /sys/devices/system/cpu/cpu1/online 1
     write /sys/devices/system/cpu/cpu2/online 1
     write /sys/devices/system/cpu/cpu3/online 1
-    write /sys/module/msm_thermal/core_control/enabled 1
 
     # bluetooth
     chown bluetooth bluetooth /sys/module/bluetooth_power/parameters/power
@@ -299,7 +297,6 @@ on charger
     write /sys/module/msm_pm/modes/cpu2/power_collapse/suspend_enabled 1
     write /sys/module/msm_pm/modes/cpu3/power_collapse/suspend_enabled 1
     write /sys/module/msm_pm/modes/cpu0/power_collapse/idle_enabled 1
-    write /sys/module/msm_thermal/core_control/enabled 0
     write /sys/devices/system/cpu/cpu1/online 1
     write /sys/devices/system/cpu/cpu2/online 1
     write /sys/devices/system/cpu/cpu3/online 1
@@ -311,7 +308,6 @@ on charger
     write /sys/devices/system/cpu/cpu1/cpufreq/scaling_min_freq 300000
     write /sys/devices/system/cpu/cpu2/cpufreq/scaling_min_freq 300000
     write /sys/devices/system/cpu/cpu3/cpufreq/scaling_min_freq 300000
-    write /sys/module/msm_thermal/core_control/enabled 1
     write /sys/devices/system/cpu/cpu1/online 0
     write /sys/devices/system/cpu/cpu2/online 0
     write /sys/devices/system/cpu/cpu3/online 0
@@ -355,7 +351,6 @@ on property:service.bootanim.exit=1
     chmod 664 /sys/devices/system/cpu/cpu3/online
 
 on property:init.svc.bootanim=stopped
-    # Switch to ROW and balanced mode after boot for better UX
     write /sys/class/devfreq/qcom,cpubw.40/governor "cpubw_hwmon"
     write /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor "interactive"
     write /sys/devices/system/cpu/cpu1/cpufreq/scaling_governor "interactive"
@@ -366,18 +361,25 @@ on property:init.svc.bootanim=stopped
     write /sys/devices/system/cpu/cpufreq/interactive/hispeed_freq 1190400
     write /sys/devices/system/cpu/cpufreq/interactive/io_is_busy 1
     write /sys/devices/system/cpu/cpufreq/interactive/target_loads "85 1500000:90 1800000:70"
-    write /sys/devices/system/cpu/cpufreq/interactive/min_sample_time 40000
+    write /sys/devices/system/cpu/cpufreq/interactive/min_sample_time "40000 1700000:80000"
     write /sys/devices/system/cpu/cpufreq/interactive/sampling_down_factor 100000
+    write /sys/devices/system/cpu/cpufreq/interactive/timer_rate 20000
 
-    write /sys/module/cpu_boost/parameters/boost_ms 20
+    write /sys/module/cpu_boost/parameters/boost_ms 10
     write /sys/module/cpu_boost/parameters/sync_threshold 1728000
-    write /sys/module/cpu_boost/parameters/input_boost_freq 1497600
-    write /sys/module/cpu_boost/parameters/input_boost_ms 40
-    write /sys/class/kgsl/kgsl-3d0/devfreq/governor msm-adreno-tz
+    write /sys/module/cpu_boost/parameters/input_boost_freq 1190400
+    write /sys/module/cpu_boost/parameters/input_boost_ms 80
     write /dev/cpuctl/apps/cpu.notify_on_migrate 1
 
-    write /sys/block/mmcblk0/queue/scheduler row
-    start mpdecision
+    write /sys/block/mmcblk0/queue/scheduler deadline
+    write /sys/block/mmcblk0/queue/iosched/fifo_batch 1
+    write /sys/block/mmcblk0/queue/iosched/front_merges 0
+    write /sys/block/mmcblk0/queue/iosched/writes_starved 8
+    
+    write /sys/class/timed_output/vibrator/vtg_level 25
+    
+    exec /system/bin/sh /init.fk.sh
+    # start mpdecision
 
 on property:init.svc.bootanim=running
     # Switch to NOOP while booting
@@ -560,14 +562,6 @@ service mpdecision /system/bin/mpdecision --avg_comp
    group system
    disabled
 
-service thermal-engine /system/bin/thermal-engine
-   class main
-   user root
-   group root
-   socket thermal-send-client stream 0666 system system
-   socket thermal-recv-client stream 0660 system system
-   socket thermal-recv-passive-client stream 0666 system system
-
 service time_daemon /system/bin/time_daemon
     class late_start
     user root
@@ -622,7 +616,7 @@ service audiod /system/bin/audiod
    group system
 
 service wcnss-service /system/bin/wcnss_service
-    class main
+    class late_start
     user system
     group system wifi qcom_diag radio
     oneshot
