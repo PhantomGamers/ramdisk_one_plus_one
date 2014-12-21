@@ -30,7 +30,7 @@ echo "by osm0sis @ xda-developers\n";
 file=`basename "$1"`;
 echo "Supplied image: $file\n";
 
-if [ -d split_img ]; then
+if [ -d split_img -o -d ramdisk ]; then
   echo "Removing old work folders and files...\n";
   cleanup;
 fi;
@@ -63,7 +63,7 @@ esac;
 if [ "$compext" ]; then
   compext=.$compext;
 fi;
-mv "$file-ramdisk.gz" "$file-ramdisk.cpio.$compext";
+mv "$file-ramdisk.gz" "$file-ramdisk.cpio$compext";
 cd ..;
 
 echo '\nUnpacking ramdisk to "ramdisk/"...\n';
@@ -73,7 +73,7 @@ if [ ! "$compext" ]; then
   abort;
   return 1;
 fi;
-$unpackcmd "../split_img/$file-ramdisk.cpio.$compext" $extra | cpio -i;
+$unpackcmd "../split_img/$file-ramdisk.cpio$compext" $extra | cpio -i;
 if [ $? -eq "1" ]; then
   abort;
   return 1;
